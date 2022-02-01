@@ -1,5 +1,4 @@
-local g = vim.g
-local opt = vim.opt
-local cmd = vim.cmd
+-- init.lua
 
-opt.termguicolors = true
+require 'settings' -- lua/settings.lua
+require 'maps' -- lua/maps.lua
