@@ -6,4 +6,5 @@ opt.number = true
 opt.splitright = true
 opt.splitbelow = true
 opt.cursorline = true
+opt.mouse = 'a'
 
