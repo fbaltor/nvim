@@ -32,8 +32,6 @@ end
 
 local lspconfig = require 'lspconfig'
 
--- Java
-
 -- eslint
 lspconfig.eslint.setup {
 	on_attach = on_attach,
