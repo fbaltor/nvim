@@ -1,11 +1,19 @@
 -- See `:help vim.lsp.start_client` for an overview of the supported `config` options.
+
+local java_path = '/home/fbaltor/.sdkman/candidates/java/11.0.14-tem/bin/java'
+local jdtls_path = '/home/fbaltor/eclipse.jdt.ls/org.eclipse.jdt.ls.product/target/repository'
+
+-- If you started neovim within `~/dev/xy/project-1` this would resolve to `project-1`
+local project_name = vim.fn.fnamemodify(vim.fn.getcwd(), ':p:h:t')
+local workspace_dir = '/home/fbaltor/' .. project_name
+
 local config = {
   -- The command that starts the language server
   -- See: https://github.com/eclipse/eclipse.jdt.ls#running-from-the-command-line
   cmd = {
 
     -- 💀
-    '/home/fbaltor/.sdkman/candidates/java/11.0.14-tem/bin/java', -- or '/path/to/java11_or_newer/bin/java'
+    java_path, -- or '/path/to/java11_or_newer/bin/java'
             -- depends on if `java` is in your $PATH env variable and if it points to the right version.
 
     '-Declipse.application=org.eclipse.jdt.ls.core.id1',
@@ -19,22 +27,20 @@ local config = {
     '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
 
     -- 💀
-    '-jar', '/home/fbaltor/eclipse.jdt.ls/org.eclipse.jdt.ls.product/target/repository/plugins/org.eclipse.equinox.launcher_1.6.400.v20210924-0641.jar',
-         -- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                       ^^^^^^^^^^^^^^
+    '-jar', jdtls_path .. '/plugins/org.eclipse.equinox.launcher_1.6.400.v20210924-0641.jar',
          -- Must point to the                                                     Change this to
          -- eclipse.jdt.ls installation                                           the actual version
 
 
     -- 💀
-    '-configuration', '/home/fbaltor/eclipse.jdt.ls/org.eclipse.jdt.ls.product/target/repository/config_linux',
-                    -- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^        ^^^^^^
+    '-configuration', jdtls_path .. '/config_linux',
                     -- Must point to the                      Change to one of `linux`, `win` or `mac`
                     -- eclipse.jdt.ls installation            Depending on your system.
 
 
     -- 💀
     -- See `data directory configuration` section in the README
-    '-data', '/home/fbaltor/data-jdtls'
+    '-data', workspace_dir,
   },
 
   -- 💀
