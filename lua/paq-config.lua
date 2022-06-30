@@ -8,5 +8,6 @@ require "paq" {
 	"nvim-lua/plenary.nvim";
 	"nvim-telescope/telescope.nvim";
 	"mfussenegger/nvim-jdtls";
+	"kyazdani42/nvim-tree.lua";
 }
 
