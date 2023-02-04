@@ -2,6 +2,7 @@
 -- Custom configuration
 vim.opt.splitbelow = true
 vim.opt.splitright = true
+vim.opt.tabstop = 4
 
 local source = '/home/fbaltor/.config/nvim/init.lua'
 vim.keymap.set('n', '<leader>ev', '<cmd>vsp ' .. source .. '<cr>', {noremap = true, silent = true, desc = '[E]dit neo[V]im config file'})
