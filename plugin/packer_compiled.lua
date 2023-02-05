@@ -161,6 +161,13 @@ _G.packer_plugins = {
     path = "/home/fbaltor/.local/share/nvim/site/pack/packer/start/packer.nvim",
     url = "https://github.com/wbthomason/packer.nvim"
   },
+  playground = {
+    load_after = {},
+    loaded = true,
+    needs_bufread = true,
+    path = "/home/fbaltor/.local/share/nvim/site/pack/packer/opt/playground",
+    url = "https://github.com/nvim-treesitter/playground"
+  },
   ["plenary.nvim"] = {
     loaded = true,
     path = "/home/fbaltor/.local/share/nvim/site/pack/packer/start/plenary.nvim",
@@ -190,14 +197,20 @@ _G.packer_plugins = {
     url = "https://github.com/tpope/vim-rhubarb"
   },
   ["vim-sleuth"] = {
-    loaded = true,
-    path = "/home/fbaltor/.local/share/nvim/site/pack/packer/start/vim-sleuth",
+    cond = { false },
+    loaded = false,
+    needs_bufread = false,
+    only_cond = true,
+    path = "/home/fbaltor/.local/share/nvim/site/pack/packer/opt/vim-sleuth",
     url = "https://github.com/tpope/vim-sleuth"
   }
 }
 
 time([[Defining packer_plugins]], false)
 -- Conditional loads
+time([[Conditional loading of vim-sleuth]], true)
+  require("packer.load")({"vim-sleuth"}, {}, _G.packer_plugins)
+time([[Conditional loading of vim-sleuth]], false)
 time([[Conditional loading of telescope-fzf-native.nvim]], true)
   require("packer.load")({"telescope-fzf-native.nvim"}, {}, _G.packer_plugins)
 time([[Conditional loading of telescope-fzf-native.nvim]], false)
@@ -205,6 +218,7 @@ time([[Conditional loading of telescope-fzf-native.nvim]], false)
 time([[Sequenced loading]], true)
 vim.cmd [[ packadd nvim-treesitter ]]
 vim.cmd [[ packadd nvim-treesitter-textobjects ]]
+vim.cmd [[ packadd playground ]]
 time([[Sequenced loading]], false)
 
 _G._packer.inside_compile = false
