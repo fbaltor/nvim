@@ -104,7 +104,7 @@ vim.api.nvim_create_autocmd('BufWritePost', {
 -- See `:help vim.o`
 
 -- Set highlight on search
-vim.o.hlsearch = false
+vim.o.hlsearch = true
 
 -- Make line numbers default
 vim.wo.number = true
@@ -143,6 +143,7 @@ vim.g.maplocalleader = ' '
 -- Keymaps for better default experience
 -- See `:help vim.keymap.set()`
 vim.keymap.set({ 'n', 'v' }, '<Space>', '<Nop>', { silent = true })
+vim.keymap.set({ 'n' }, '<leader>h', '<esc>:set invhlsearch<cr>', { silent = true })
 
 -- Remap for dealing with word wrap
 vim.keymap.set('n', 'k', "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true })
@@ -367,7 +368,8 @@ local servers = {
   -- gopls = {},
   -- pyright = {},
   -- rust_analyzer = {},
-  -- tsserver = {},
+  tsserver = {},
+  denols = {},
 
   sumneko_lua = {
     Lua = {
@@ -402,6 +404,17 @@ mason_lspconfig.setup_handlers {
       settings = servers[server_name],
     }
   end,
+}
+
+local lspconfig = require('lspconfig')
+lspconfig.tsserver.setup {
+  on_attach = on_attach,
+  root_dir = lspconfig.util.root_pattern("package.json"),
+  single_file_support = false
+}
+lspconfig.denols.setup {
+  on_attach = on_attach,
+  root_dir = lspconfig.util.root_pattern("deno.json", "deno.jsonc")
 }
 
 -- Turn on lsp status information
@@ -455,3 +468,8 @@ cmp.setup {
 
 -- Custom configurations
 require 'custom' -- ./lua/custom.lua
+
+-- Deno
+vim.g.markdown_fenced_languages = {
+  "ts=typescript"
+}
