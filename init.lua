@@ -54,12 +54,6 @@ require('packer').startup(function(use)
   use 'lewis6991/gitsigns.nvim'
 
   use 'navarasu/onedark.nvim' -- Theme inspired by Atom
-  require('onedark').setup {
-    -- toggle theme style ---
-    toggle_style_key = '<leader>ts', -- keybind to toggle theme style. Leave it nil to disable it, or set it to a string, for example "<leader>ts"
-    toggle_style_list = {'dark', 'light'}, -- List of styles to toggle between. The possible styles are {'dark', 'darker', 'cool', 'deep', 'warm', 'warmer', 'light'}
-  }
-
   use 'nvim-lualine/lualine.nvim' -- Fancier statusline
   use 'lukas-reineke/indent-blankline.nvim' -- Add indentation guides even on blank lines
   use 'numToStr/Comment.nvim' -- "gc" to comment visual regions/lines
@@ -479,3 +473,9 @@ require 'custom' -- ./lua/custom.lua
 vim.g.markdown_fenced_languages = {
   "ts=typescript"
 }
+
+require('onedark').setup {
+    -- toggle theme style ---
+    toggle_style_key = '<leader>ts', -- keybind to toggle theme style. Leave it nil to disable it, or set it to a string, for example "<leader>ts"
+    toggle_style_list = {'light', 'dark'}, -- List of styles to toggle between. The possible styles are {'dark', 'darker', 'cool', 'deep', 'warm', 'warmer', 'light'}
+  }
