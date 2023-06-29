@@ -474,8 +474,23 @@ vim.g.markdown_fenced_languages = {
   "ts=typescript"
 }
 
+-- -- Colorscheme configurations
+-- local get_colorscheme_style = function()
+-- 	if vim.g.THEME == nil then
+-- 		vim.g.THEME = 'dark'
+-- 	end
+--
+-- 	return vim.g.THEME
+-- end
+
 require('onedark').setup {
+	style = 'dark',
     -- toggle theme style ---
     toggle_style_key = '<leader>ts', -- keybind to toggle theme style. Leave it nil to disable it, or set it to a string, for example "<leader>ts"
     toggle_style_list = {'light', 'dark'}, -- List of styles to toggle between. The possible styles are {'dark', 'darker', 'cool', 'deep', 'warm', 'warmer', 'light'}
   }
+
+-- vim.api.nvim_create_autocmd('ColorScheme', {
+--   command = "let g:THEME = expand('<amatch>') | wshada",
+--   pattern = {'*'},
+-- })
