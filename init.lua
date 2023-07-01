@@ -128,7 +128,6 @@ vim.wo.signcolumn = 'yes'
 
 -- Set colorscheme
 vim.o.termguicolors = true
-vim.cmd [[colorscheme onedark]]
 
 -- Set completeopt to have a better completion experience
 vim.o.completeopt = 'menuone,noselect'
@@ -475,22 +474,45 @@ vim.g.markdown_fenced_languages = {
 }
 
 -- -- Colorscheme configurations
--- local get_colorscheme_style = function()
--- 	if vim.g.THEME == nil then
--- 		vim.g.THEME = 'dark'
--- 	end
---
--- 	return vim.g.THEME
--- end
+local get_onedark_style = function()
+	if ONEDARK_STYLE == nil then
+		ONEDARK_STYLE = 'dark'
+	end
 
-require('onedark').setup {
-	style = 'dark',
+	if ONEDARK_STYLE == 'dark' then
+		vim.o.background = 'dark'
+	end
+
+	if ONEDARK_STYLE == 'light' then
+		vim.o.background = 'light'
+	end
+
+	return ONEDARK_STYLE
+end
+
+local onedark_options =  {
+	style = get_onedark_style(),
     -- toggle theme style ---
     toggle_style_key = '<leader>ts', -- keybind to toggle theme style. Leave it nil to disable it, or set it to a string, for example "<leader>ts"
     toggle_style_list = {'light', 'dark'}, -- List of styles to toggle between. The possible styles are {'dark', 'darker', 'cool', 'deep', 'warm', 'warmer', 'light'}
-  }
-
+}
+require('onedark').setup(onedark_options)
+require('onedark').load()
+--
+-- local save_onedark_style = function()
+-- 	print(ONEDARK_STYLE)
+-- 	if ONEDARK_STYLE == 'light' then
+-- 		vim.o.background = 'dark'
+-- 		ONEDARK_STYLE = 'dark'
+-- 	elseif ONEDARK_STYLE == 'dark' then
+-- 		vim.o.background = 'light'
+-- 		ONEDARK_STYLE = 'light'
+-- 	end
+--
+-- 	vim.cmd('wsh!')
+-- end
+--
 -- vim.api.nvim_create_autocmd('ColorScheme', {
---   command = "let g:THEME = expand('<amatch>') | wshada",
 --   pattern = {'*'},
+--   callback = save_onedark_style,
 -- })
