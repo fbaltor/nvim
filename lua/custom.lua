@@ -2,10 +2,11 @@
 -- Custom configuration
 vim.opt.splitbelow = true
 vim.opt.splitright = true
-vim.opt.tabstop = 4
-vim.opt.expandtab = false
-vim.opt.softtabstop = -1
-vim.opt.shiftwidth = 0
+-- Disabled since we are using guess-indent
+-- vim.opt.tabstop = 4
+-- vim.opt.expandtab = false
+-- vim.opt.softtabstop = -1
+-- vim.opt.shiftwidth = 0
 
 -- Display the invisible characters
 vim.opt.list = true

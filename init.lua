@@ -68,6 +68,10 @@ require('packer').startup(function(use)
   -- Fuzzy Finder Algorithm which requires local dependencies to be built. Only load if `make` is available
   use { 'nvim-telescope/telescope-fzf-native.nvim', run = 'make', cond = vim.fn.executable 'make' == 1 }
 
+  -- using packer.nvim
+  use { 'nmac427/guess-indent.nvim' }
+
+
   -- Add custom plugins to packer from ~/.config/nvim/lua/custom/plugins.lua
   local has_plugins, plugins = pcall(require, 'custom.plugins')
   if has_plugins then
@@ -159,6 +163,10 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   pattern = '*',
 })
 
+
+-- Configure guess-indent
+require('guess-indent').setup {}
+
 -- Set lualine as statusline
 -- See `:help lualine.txt`
 require('lualine').setup {
@@ -229,7 +237,7 @@ vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { de
 -- See `:help nvim-treesitter`
 require('nvim-treesitter.configs').setup {
   -- Add languages to be installed here that you want installed for treesitter
-  ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'typescript', 'javascript', 'help', 'vim', 'java' },
+  ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'typescript', 'javascript', 'help', 'vim', 'java', 'dart' },
 
   highlight = { enable = true },
   indent = { enable = true, disable = { 'python' } },
@@ -415,6 +423,7 @@ lspconfig.denols.setup {
   on_attach = on_attach,
   root_dir = lspconfig.util.root_pattern("deno.json", "deno.jsonc")
 }
+lspconfig.dartls.setup {}
 
 -- Turn on lsp status information
 require('fidget').setup()
