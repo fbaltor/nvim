@@ -26,6 +26,14 @@ require('packer').startup(function(use)
     },
   }
 
+  use {
+    'jay-babu/mason-null-ls.nvim',
+    requires = {
+      'williamboman/mason.nvim',
+      'nvimtools/none-ls.nvim',
+    },
+  }
+
   use { -- Autocompletion
     'hrsh7th/nvim-cmp',
     requires = { 'hrsh7th/cmp-nvim-lsp', 'L3MON4D3/LuaSnip', 'saadparwaiz1/cmp_luasnip' },
@@ -38,16 +46,6 @@ require('packer').startup(function(use)
     end,
   }
 
-  use { -- Additional text objects via treesitter
-    'nvim-treesitter/nvim-treesitter-textobjects',
-    after = 'nvim-treesitter',
-  }
-
-  use {
-    'nvim-treesitter/playground',
-    after = 'nvim-treesitter'
-  }
-
   -- Git related plugins
   use 'tpope/vim-fugitive'
   use 'tpope/vim-rhubarb'
@@ -55,11 +53,10 @@ require('packer').startup(function(use)
 
   use 'navarasu/onedark.nvim' -- Theme inspired by Atom
   use 'nvim-lualine/lualine.nvim' -- Fancier statusline
-  use 'lukas-reineke/indent-blankline.nvim' -- Add indentation guides even on blank lines
   use 'numToStr/Comment.nvim' -- "gc" to comment visual regions/lines
   use { -- Detect tabstop and shiftwidth automatically
-      'tpope/vim-sleuth',
-      cond = false
+    'tpope/vim-sleuth',
+    cond = false
   }
 
   -- Fuzzy Finder (files, lsp, etc)
@@ -71,6 +68,8 @@ require('packer').startup(function(use)
   -- using packer.nvim
   use { 'nmac427/guess-indent.nvim' }
 
+  -- disable LSP diagnostics
+  use { 'WhoIsSethDaniel/toggle-lsp-diagnostics.nvim' }
 
   -- Add custom plugins to packer from ~/.config/nvim/lua/custom/plugins.lua
   local has_plugins, plugins = pcall(require, 'custom.plugins')
@@ -183,10 +182,10 @@ require('Comment').setup()
 
 -- Enable `lukas-reineke/indent-blankline.nvim`
 -- See `:help indent_blankline.txt`
-require('indent_blankline').setup {
-  char = '┊',
-  show_trailing_blankline_indent = false,
-}
+-- require('indent_blankline').setup {
+--   char = '┊',
+--   show_trailing_blankline_indent = false,
+-- }
 
 -- Gitsigns
 -- See `:help gitsigns.txt`
@@ -237,7 +236,8 @@ vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { de
 -- See `:help nvim-treesitter`
 require('nvim-treesitter.configs').setup {
   -- Add languages to be installed here that you want installed for treesitter
-  ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'typescript', 'javascript', 'help', 'vim', 'java', 'dart' },
+  ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'typescript', 'javascript', 'vim', 'java',
+    'dart' },
 
   highlight = { enable = true },
   indent = { enable = true, disable = { 'python' } },
@@ -373,18 +373,29 @@ end
 local servers = {
   -- clangd = {},
   -- gopls = {},
-  -- pyright = {},
   -- rust_analyzer = {},
+  pyright = {},
   tsserver = {},
   denols = {},
 
-  sumneko_lua = {
+  lua_ls = {
     Lua = {
       workspace = { checkThirdParty = false },
       telemetry = { enable = false },
     },
   },
 }
+
+-- Allow black binary to interact with lsp for formatting
+require("mason-null-ls").setup({
+  ensure_installed = { "black" }
+})
+local none_ls = require("null-ls")
+none_ls.setup({
+  sources = {
+    none_ls.builtins.formatting.black,
+  },
+})
 
 -- Setup neovim lua configuration
 require('neodev').setup()
@@ -484,26 +495,26 @@ vim.g.markdown_fenced_languages = {
 
 -- -- Colorscheme configurations
 local get_onedark_style = function()
-	if ONEDARK_STYLE == nil then
-		ONEDARK_STYLE = 'dark'
-	end
+  if ONEDARK_STYLE == nil then
+    ONEDARK_STYLE = 'dark'
+  end
 
-	if ONEDARK_STYLE == 'dark' then
-		vim.o.background = 'dark'
-	end
+  if ONEDARK_STYLE == 'dark' then
+    vim.o.background = 'dark'
+  end
 
-	if ONEDARK_STYLE == 'light' then
-		vim.o.background = 'light'
-	end
+  if ONEDARK_STYLE == 'light' then
+    vim.o.background = 'light'
+  end
 
-	return ONEDARK_STYLE
+  return ONEDARK_STYLE
 end
 
-local onedark_options =  {
-	style = get_onedark_style(),
-    -- toggle theme style ---
-    toggle_style_key = '<leader>ts', -- keybind to toggle theme style. Leave it nil to disable it, or set it to a string, for example "<leader>ts"
-    toggle_style_list = {'light', 'dark'}, -- List of styles to toggle between. The possible styles are {'dark', 'darker', 'cool', 'deep', 'warm', 'warmer', 'light'}
+local onedark_options = {
+  style = get_onedark_style(),
+  -- toggle theme style ---
+  toggle_style_key = '<leader>ts', -- keybind to toggle theme style. Leave it nil to disable it, or set it to a string, for example "<leader>ts"
+  toggle_style_list = { 'light', 'dark' }, -- List of styles to toggle between. The possible styles are {'dark', 'darker', 'cool', 'deep', 'warm', 'warmer', 'light'}
 }
 require('onedark').setup(onedark_options)
 require('onedark').load()
@@ -525,3 +536,6 @@ require('onedark').load()
 --   pattern = {'*'},
 --   callback = save_onedark_style,
 -- })
+
+-- Toggle LSP diagnostics
+require('toggle_lsp_diagnostics').init()
