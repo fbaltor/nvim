@@ -388,12 +388,13 @@ local servers = {
 
 -- Allow black binary to interact with lsp for formatting
 require("mason-null-ls").setup({
-  ensure_installed = { "black" }
+  ensure_installed = { "black", "prettier" }
 })
 local none_ls = require("null-ls")
 none_ls.setup({
   sources = {
     none_ls.builtins.formatting.black,
+    none_ls.builtins.formatting.prettier,
   },
 })
 
