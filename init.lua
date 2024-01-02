@@ -26,14 +26,6 @@ require('packer').startup(function(use)
     },
   }
 
-  use {
-    'jay-babu/mason-null-ls.nvim',
-    requires = {
-      'williamboman/mason.nvim',
-      'nvimtools/none-ls.nvim',
-    },
-  }
-
   use { -- Autocompletion
     'hrsh7th/nvim-cmp',
     requires = { 'hrsh7th/cmp-nvim-lsp', 'L3MON4D3/LuaSnip', 'saadparwaiz1/cmp_luasnip' },
@@ -66,10 +58,29 @@ require('packer').startup(function(use)
   use { 'nvim-telescope/telescope-fzf-native.nvim', run = 'make', cond = vim.fn.executable 'make' == 1 }
 
   -- using packer.nvim
-  use { 'nmac427/guess-indent.nvim' }
+  -- use { 'nmac427/guess-indent.nvim' }
 
   -- disable LSP diagnostics
   use { 'WhoIsSethDaniel/toggle-lsp-diagnostics.nvim' }
+
+  use({
+    "stevearc/conform.nvim",
+    config = function()
+      require("conform").setup()
+    end,
+  })
+
+  -- Hex editing
+  use { 'RaafatTurki/hex.nvim' }
+
+  -- Python virtual environment selection
+  use { 'linux-cultist/venv-selector.nvim',
+        requires = {
+          'neovim/nvim-lspconfig',
+          'nvim-telescope/telescope.nvim',
+          'mfussenegger/nvim-dap-python',
+        },
+  }
 
   -- Add custom plugins to packer from ~/.config/nvim/lua/custom/plugins.lua
   local has_plugins, plugins = pcall(require, 'custom.plugins')
@@ -164,7 +175,7 @@ vim.api.nvim_create_autocmd('TextYankPost', {
 
 
 -- Configure guess-indent
-require('guess-indent').setup {}
+-- require('guess-indent').setup {}
 
 -- Set lualine as statusline
 -- See `:help lualine.txt`
@@ -361,7 +372,7 @@ local on_attach = function(_, bufnr)
 
   -- Create a command `:Format` local to the LSP buffer
   vim.api.nvim_buf_create_user_command(bufnr, 'Format', function(_)
-    vim.lsp.buf.format()
+    require("conform").format()
   end, { desc = 'Format current buffer with LSP' })
 end
 
@@ -385,18 +396,6 @@ local servers = {
     },
   },
 }
-
--- Allow black binary to interact with lsp for formatting
-require("mason-null-ls").setup({
-  ensure_installed = { "black", "prettier" }
-})
-local none_ls = require("null-ls")
-none_ls.setup({
-  sources = {
-    none_ls.builtins.formatting.black,
-    none_ls.builtins.formatting.prettier,
-  },
-})
 
 -- Setup neovim lua configuration
 require('neodev').setup()
@@ -438,7 +437,7 @@ lspconfig.denols.setup {
 lspconfig.dartls.setup {}
 
 -- Turn on lsp status information
-require('fidget').setup()
+require('fidget').setup({})
 
 -- nvim-cmp setup
 local cmp = require 'cmp'
@@ -540,3 +539,22 @@ require('onedark').load()
 
 -- Toggle LSP diagnostics
 require('toggle_lsp_diagnostics').init()
+
+
+-- Formatter
+require("conform").setup({
+  formatters_by_ft = {
+    lua = { "stylua" },
+    -- Conform will run multiple formatters sequentially
+    -- python = { "isort", "black" },
+    -- Use a sub-list to run only the first available formatter
+    javascript = { { "prettierd", "prettier" } },
+  },
+})
+
+-- Hex editing
+require 'hex'.setup()
+
+require 'venv-selector'.setup({
+  name = '.venv',
+})
