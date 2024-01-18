@@ -58,12 +58,16 @@ require('packer').startup(function(use)
   use { 'nvim-telescope/telescope-fzf-native.nvim', run = 'make', cond = vim.fn.executable 'make' == 1 }
 
   -- using packer.nvim
-  -- use { 'nmac427/guess-indent.nvim' }
+  use { 'nmac427/guess-indent.nvim' }
+
+  -- Indentation marks
+  use { "lukas-reineke/indent-blankline.nvim", main = "ibl", opts = {} }
 
   -- disable LSP diagnostics
   use { 'WhoIsSethDaniel/toggle-lsp-diagnostics.nvim' }
 
   use({
+
     "stevearc/conform.nvim",
     config = function()
       require("conform").setup()
@@ -175,7 +179,7 @@ vim.api.nvim_create_autocmd('TextYankPost', {
 
 
 -- Configure guess-indent
--- require('guess-indent').setup {}
+require('guess-indent').setup {}
 
 -- Set lualine as statusline
 -- See `:help lualine.txt`
@@ -193,10 +197,7 @@ require('Comment').setup()
 
 -- Enable `lukas-reineke/indent-blankline.nvim`
 -- See `:help indent_blankline.txt`
--- require('indent_blankline').setup {
---   char = '┊',
---   show_trailing_blankline_indent = false,
--- }
+require('ibl').setup()
 
 -- Gitsigns
 -- See `:help gitsigns.txt`
@@ -546,7 +547,7 @@ require("conform").setup({
   formatters_by_ft = {
     lua = { "stylua" },
     -- Conform will run multiple formatters sequentially
-    -- python = { "isort", "black" },
+    python = { "isort", "black" },
     -- Use a sub-list to run only the first available formatter
     javascript = { { "prettierd", "prettier" } },
   },
