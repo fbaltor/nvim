@@ -67,7 +67,6 @@ require('packer').startup(function(use)
   use { 'WhoIsSethDaniel/toggle-lsp-diagnostics.nvim' }
 
   use({
-
     "stevearc/conform.nvim",
     config = function()
       require("conform").setup()
@@ -436,6 +435,29 @@ lspconfig.denols.setup {
   root_dir = lspconfig.util.root_pattern("deno.json", "deno.jsonc")
 }
 lspconfig.dartls.setup {}
+lspconfig.rust_analyzer.setup {
+  on_attach = function(client, bufnr)
+      vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+  end,
+  settings = {
+    ["rust-analyzer"] = {
+      imports = {
+        granularity = {
+          group = "module",
+        },
+        prefix = "self",
+      },
+      cargo = {
+        buildScripts = {
+          enable = true,
+        },
+      },
+      procMacro = {
+        enable = true,
+      },
+    }
+  }
+}
 
 -- Turn on lsp status information
 require('fidget').setup({})
@@ -554,7 +576,7 @@ require("conform").setup({
 })
 
 -- Hex editing
-require 'hex'.setup()
+-- require 'hex'.setup()
 
 require 'venv-selector'.setup({
   name = '.venv',
