@@ -388,6 +388,7 @@ local servers = {
   pyright = {},
   tsserver = {},
   denols = {},
+  html = {},
 
   lua_ls = {
     Lua = {
@@ -395,6 +396,14 @@ local servers = {
       telemetry = { enable = false },
     },
   },
+}
+
+-- html
+local capabilities = vim.lsp.protocol.make_client_capabilities()
+capabilities.textDocument.completion.completionItem.snippetSupport = true
+
+require'lspconfig'.html.setup {
+  capabilities = capabilities,
 }
 
 -- Setup neovim lua configuration
