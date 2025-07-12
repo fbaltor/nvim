@@ -66,23 +66,27 @@ require('packer').startup(function(use)
   -- disable LSP diagnostics
   use { 'WhoIsSethDaniel/toggle-lsp-diagnostics.nvim' }
 
-  use({
+  use {
     "stevearc/conform.nvim",
     config = function()
       require("conform").setup()
     end,
-  })
+  }
 
   -- Hex editing
   use { 'RaafatTurki/hex.nvim' }
 
-  -- Python virtual environment selection
-  use { 'linux-cultist/venv-selector.nvim',
-        requires = {
-          'neovim/nvim-lspconfig',
-          'nvim-telescope/telescope.nvim',
-          'mfussenegger/nvim-dap-python',
-        },
+  use { "linux-cultist/venv-selector.nvim",
+    dependencies = {
+      "neovim/nvim-lspconfig",
+      "mfussenegger/nvim-dap", "mfussenegger/nvim-dap-python", --optional
+      { "nvim-telescope/telescope.nvim", branch = "0.1.x", dependencies = { "nvim-lua/plenary.nvim" }},
+    },
+    lazy = false,
+    branch = "regexp", -- This is the regexp branch, use this for the new version
+    keys = {
+      { ",v", "<cmd>VenvSelect<cr>" },
+    },
   }
 
   -- Add custom plugins to packer from ~/.config/nvim/lua/custom/plugins.lua
@@ -386,8 +390,16 @@ local servers = {
   -- gopls = {},
   -- rust_analyzer = {},
   pyright = {},
-  tsserver = {},
-  denols = {},
+  -- tsserver = {
+  --   root_dir = require("lspconfig").util.root_pattern({ "package.json", "tsconfig.json" }),
+  --   single_file_support = false,
+  --   settings ={},
+  -- },
+  denols = {
+    root_dir = require("lspconfig").util.root_pattern({"deno.json", "deno.jsonc"}),
+    single_file_support = false,
+    settings = {},
+  },
   html = {},
 
   lua_ls = {
@@ -410,7 +422,6 @@ require'lspconfig'.html.setup {
 require('neodev').setup()
 --
 -- nvim-cmp supports additional completion capabilities, so broadcast that to servers
-local capabilities = vim.lsp.protocol.make_client_capabilities()
 capabilities = require('cmp_nvim_lsp').default_capabilities(capabilities)
 
 -- Setup mason so it can manage external tooling
@@ -423,19 +434,9 @@ mason_lspconfig.setup {
   ensure_installed = vim.tbl_keys(servers),
 }
 
-mason_lspconfig.setup_handlers {
-  function(server_name)
-    require('lspconfig')[server_name].setup {
-      capabilities = capabilities,
-      on_attach = on_attach,
-      settings = servers[server_name],
-    }
-  end,
-}
-
 local lspconfig = require('lspconfig')
 
-lspconfig.tsserver.setup {
+lspconfig.ts_ls.setup {
   on_attach = on_attach,
   root_dir = lspconfig.util.root_pattern("package.json"),
   single_file_support = false
@@ -592,9 +593,9 @@ require("conform").setup({
 -- Hex editing
 -- require 'hex'.setup()
 
-require 'venv-selector'.setup({
-  name = '.venv',
-})
+-- require 'venv-selector'.setup({
+--   name = '.venv',
+-- })
 
 vim.api.nvim_create_autocmd("FileType",  {
   pattern = "markdown",
