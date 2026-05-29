@@ -750,21 +750,6 @@ require('lazy').setup({
           --   -- end,
           -- },
           rust_analyzer = {},
-          --
-          lua_ls = {
-            -- cmd = { ... },
-            -- filetypes = { ... },
-            -- capabilities = {},
-            settings = {
-              Lua = {
-                completion = {
-                  callSnippet = 'Replace',
-                },
-                -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
-                -- diagnostics = { disable = { 'missing-fields' } },
-              },
-            },
-          },
           terraformls = {
             -- Check ~/.local/share/nvim/lazy/nvim-lspconfig/lsp/terraformls.lua and
             -- https://github.com/hashicorp/terraform-ls/blob/main/docs/USAGE.md
@@ -803,6 +788,27 @@ require('lazy').setup({
         },
       }
 
+      -- Prefer language servers/tools already on PATH (e.g. provided by Nix on
+      -- NixOS, where Mason's prebuilt dynamically-linked binaries can't run).
+      -- Falls back to Mason auto-install elsewhere, keeping this config portable.
+      local function on_path(bin)
+        return vim.fn.executable(bin) == 1
+      end
+
+      local lua_ls = {
+        settings = {
+          Lua = {
+            completion = { callSnippet = 'Replace' },
+            -- diagnostics = { disable = { 'missing-fields' } },
+          },
+        },
+      }
+      if on_path 'lua-language-server' then
+        servers.others.lua_ls = lua_ls
+      else
+        servers.mason.lua_ls = lua_ls
+      end
+
       -- Ensure the servers and tools above are installed
       --
       -- To check the current status of installed tools and/or manually install
@@ -817,9 +823,9 @@ require('lazy').setup({
       -- You can add other tools here that you want Mason to install
       -- for you, so that they are available from within Neovim.
       local ensure_installed = vim.tbl_keys(servers.mason or {})
-      vim.list_extend(ensure_installed, {
-        'stylua', -- Used to format Lua code
-      })
+      if not on_path 'stylua' then
+        table.insert(ensure_installed, 'stylua') -- Lua formatter, used by conform
+      end
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
       -- Either merge all additional server configs from the `servers.mason` and `servers.others` tables
