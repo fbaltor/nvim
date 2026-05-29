@@ -960,51 +960,19 @@ require('lazy').setup({
     },
   },
 
-  { -- You can easily change to a different colorscheme.
-    -- Change the name of the colorscheme plugin below, and then
-    -- change the command in the config to whatever the name of that colorscheme is.
-    --
-    -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-
-    'navarasu/onedark.nvim',
-    priority = 1000,
-    config = function()
-      local current_style = 'dark'
-
-      local function apply_theme(style)
-        current_style = style
-        require('onedark').setup { style = style }
-        require('onedark').load()
-      end
-
-      -- Query the GNOME color-scheme asynchronously so the gsettings shell call
-      -- never blocks UI startup. Repaints only if it differs from the current
-      -- style. Falls back to 'dark' on any error.
-      local function sync_from_system()
-        vim.system({ 'gsettings', 'get', 'org.gnome.desktop.interface', 'color-scheme' }, { text = true }, function(res)
-          local style = 'dark'
-          if res.code == 0 and not res.stdout:match 'prefer%-dark' then
-            style = 'light'
-          end
-          if style ~= current_style then
-            vim.schedule(function()
-              apply_theme(style)
-            end)
-          end
-        end)
-      end
-
-      -- Paint immediately with a sane default, then reconcile with the system.
-      apply_theme 'dark'
-      sync_from_system()
-
-      vim.keymap.set('n', '<leader>ts', function()
-        apply_theme(current_style == 'light' and 'dark' or 'light')
-      end, { desc = 'Toggle theme' })
-
-      vim.keymap.set('n', '<leader>tr', sync_from_system, { desc = 'Refresh theme from system' })
-    end,
-  },
+  -- Colorscheme ports matching Ghostty's themes. Lazy-loaded on demand when
+  -- `custom.ghostty-theme` calls :colorscheme. Sync engine wired up after
+  -- require('lazy').setup() below.
+  { 'catppuccin/nvim', name = 'catppuccin', lazy = true, priority = 1000 },
+  { 'ellisonleao/gruvbox.nvim', lazy = true, priority = 1000 },
+  { 'sainnhe/everforest', lazy = true, priority = 1000 },
+  { 'rose-pine/neovim', name = 'rose-pine', lazy = true, priority = 1000 },
+  { 'projekt0n/github-nvim-theme', name = 'github-theme', lazy = true, priority = 1000, config = function() require('github-theme').setup {} end },
+  { 'maxmx03/solarized.nvim', lazy = true, priority = 1000, opts = {} },
+  { 'Mofiqul/dracula.nvim', name = 'dracula', lazy = true, priority = 1000 },
+  { 'folke/tokyonight.nvim', lazy = true, priority = 1000 },
+  { 'rebelot/kanagawa.nvim', lazy = true, priority = 1000 },
+  { 'shaunsingh/nord.nvim', lazy = true, priority = 1000 },
 
   -- Highlight todo, notes, etc in comments
   {
@@ -1173,6 +1141,9 @@ require('lazy').setup({
     },
   },
 })
+
+-- Sync nvim's colorscheme to Ghostty's active terminal theme (live, on switch).
+require('custom.ghostty-theme').setup()
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
