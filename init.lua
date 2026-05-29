@@ -90,7 +90,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.o`
@@ -171,9 +171,10 @@ vim.o.shiftwidth = 2
 vim.o.expandtab = true
 vim.o.softtabstop = 2
 
--- allow the use of .nvim.lua to customize the nvim behavior project basesd
+-- Allow project-local .nvim.lua to customize nvim behavior. Gated by
+-- Neovim's :trust mechanism (hash allowlist); `vim.o.secure` only ever applied
+-- to legacy .exrc/.vimrc (not .nvim.lua), so it is intentionally omitted.
 vim.o.exrc = true
-vim.o.secure = true
 
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
@@ -702,34 +703,34 @@ require('lazy').setup({
       --  2) via your system's package manager; or
       --  3) via a release binary from a language server's repo that's accessible somewhere on your system.
 
-      -- The servers table comprises of the following sub-tables:
-      -- 1. mason
-      -- 2. others
-      -- Both these tables have an identical structure of language server names as keys and
-      -- a table of language server configuration as values.
-      ---@class LspServersConfig
-      ---@field mason table<string, vim.lsp.Config>
-      ---@field others table<string, vim.lsp.Config>
+      -- Prefer binaries already on PATH (e.g. provided by Nix on NixOS), and
+      -- fall back to Mason auto-install otherwise. `on_path` probes the
+      -- executable name, which differs from the lspconfig server key.
+      local function on_path(bin)
+        return vim.fn.executable(bin) == 1
+      end
+
+      -- Language servers, declared once. `bin` is the executable on_path()
+      -- probes; `config` holds nvim-lspconfig overrides (empty = use defaults).
+      --  Override keys: cmd, filetypes, capabilities, settings, root_markers,
+      --  root_dir. See `:help lspconfig-all` for available server names.
+      ---@type table<string, { bin: string, config: vim.lsp.Config }>
       local servers = {
-        --  Add any additional override configuration in any of the following tables. Available keys are:
-        --  - cmd (table): Override the default command used to start the server
-        --  - filetypes (table): Override the default list of associated filetypes for the server
-        --  - capabilities (table): Override fields in capabilities. Can be used to disable certain LSP features.
-        --  - settings (table): Override the default settings passed when initializing the server.
-        --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
-        --
-        --  Feel free to add/remove any LSPs here that you want to install via Mason. They will automatically be installed and setup.
-        mason = {
-          -- gopls = {},
-          pyright = {},
-          -- rust_analyzer = {},
-          -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
-          --
-          -- Some languages (like typescript) have entire language plugins that can be useful:
-          --    https://github.com/pmizio/typescript-tools.nvim
-          --
-          -- But for many setups, the LSP (`ts_ls`) will work just fine
-          ts_ls = {
+        lua_ls = {
+          bin = 'lua-language-server',
+          config = {
+            settings = {
+              Lua = {
+                completion = { callSnippet = 'Replace' },
+                -- diagnostics = { disable = { 'missing-fields' } },
+              },
+            },
+          },
+        },
+        pyright = { bin = 'pyright', config = {} },
+        ts_ls = {
+          bin = 'typescript-language-server',
+          config = {
             workspace_required = true,
             root_markers = { 'tsconfig.json' },
             root_dir = function(bufnr, on_dir)
@@ -739,29 +740,20 @@ require('lazy').setup({
               end
             end,
           },
-          -- denols = {
-          --   workspace_required = true,
-          --   root_markers = { 'deno.json' },
-          --   -- root_dir = function(bufnr, on_dir)
-          --   --   local root = vim.fs.root(bufnr, { 'deno.json' })
-          --   --   if root then
-          --   --     on_dir(root)
-          --   --   end
-          --   -- end,
-          -- },
-          rust_analyzer = {},
-          terraformls = {
-            -- Check ~/.local/share/nvim/lazy/nvim-lspconfig/lsp/terraformls.lua and
-            -- https://github.com/hashicorp/terraform-ls/blob/main/docs/USAGE.md
-            -- currently terraformls (https://github.com/hashicorp/terraform-ls) need
-            -- the `init_options` to pass some settings.
-            --
-            init_options = {
-              ignoreSingleFileWarning = true,
-            },
-          },
-          terraform = {},
-          docker_language_server = {
+        },
+        rust_analyzer = { bin = 'rust-analyzer', config = {} },
+        terraformls = {
+          bin = 'terraform-ls',
+          -- terraform-ls needs init_options to pass settings.
+          -- https://github.com/hashicorp/terraform-ls/blob/main/docs/USAGE.md
+          config = { init_options = { ignoreSingleFileWarning = true } },
+        },
+        -- NOTE: `terraform` (terraform-lsp) intentionally dropped — it is the
+        -- archived/deprecated server and double-attaches on .tf alongside
+        -- terraformls. Re-add only with a specific reason.
+        docker_language_server = {
+          bin = 'docker-language-server',
+          config = {
             workspace_required = true,
             filetypes = { 'dockerfile', 'yaml.docker-compose', 'yml.docker-compose', 'docker-compose.yml', 'docker-compose.yml.tpl' },
             root_markers = {
@@ -776,76 +768,50 @@ require('lazy').setup({
               'docker-bake.override.hcl',
             },
           },
-          bashls = {},
         },
-        -- This table contains config for all language servers that are *not* installed via Mason.
-        -- Structure is identical to the mason table from above.
-        others = {
-          -- dartls = {},
-          clangd = {
-            cmd = { '/usr/bin/clangd' },
-          },
-        },
+        bashls = { bin = 'bash-language-server', config = {} },
+        clangd = { bin = 'clangd', config = {} },
       }
 
-      -- Prefer language servers/tools already on PATH (e.g. provided by Nix on
-      -- NixOS, where Mason's prebuilt dynamically-linked binaries can't run).
-      -- Falls back to Mason auto-install elsewhere, keeping this config portable.
-      local function on_path(bin)
-        return vim.fn.executable(bin) == 1
-      end
+      -- Standalone tools (formatters/linters used by conform). Not LSP servers,
+      -- so they only need to exist on PATH; Mason installs the missing ones.
+      local tools = { 'stylua', 'black' }
 
-      local lua_ls = {
-        settings = {
-          Lua = {
-            completion = { callSnippet = 'Replace' },
-            -- diagnostics = { disable = { 'missing-fields' } },
-          },
-        },
-      }
-      if on_path 'lua-language-server' then
-        servers.others.lua_ls = lua_ls
-      else
-        servers.mason.lua_ls = lua_ls
-      end
+      -- One routing rule for everything: already on PATH -> use it directly;
+      -- missing -> queue for Mason auto-install. Keeps this file identical
+      -- across NixOS (binaries from Nix) and non-Nix machines (Mason fills in).
+      local mason_install = {} -- servers + tools Mason must install
+      local path_servers = {} -- servers already on PATH (enable manually)
 
-      -- Ensure the servers and tools above are installed
-      --
-      -- To check the current status of installed tools and/or manually install
-      -- other tools, you can run
-      --    :Mason
-      --
-      -- You can press `g?` for help in this menu.
-      --
-      -- `mason` had to be setup earlier: to configure its options see the
-      -- `dependencies` table for `nvim-lspconfig` above.
-      --
-      -- You can add other tools here that you want Mason to install
-      -- for you, so that they are available from within Neovim.
-      local ensure_installed = vim.tbl_keys(servers.mason or {})
-      if not on_path 'stylua' then
-        table.insert(ensure_installed, 'stylua') -- Lua formatter, used by conform
-      end
-      require('mason-tool-installer').setup { ensure_installed = ensure_installed }
-
-      -- Either merge all additional server configs from the `servers.mason` and `servers.others` tables
-      -- to the default language server configs as provided by nvim-lspconfig or
-      -- define a custom server config that's unavailable on nvim-lspconfig.
-      for server, config in pairs(vim.tbl_extend('keep', servers.mason, servers.others)) do
-        if not vim.tbl_isempty(config) then
-          vim.lsp.config(server, config)
+      for name, spec in pairs(servers) do
+        if not vim.tbl_isempty(spec.config) then
+          vim.lsp.config(name, spec.config)
+        end
+        if on_path(spec.bin) then
+          table.insert(path_servers, name)
+        else
+          table.insert(mason_install, name)
         end
       end
 
-      -- After configuring our language servers, we now enable them
+      for _, tool in ipairs(tools) do
+        if not on_path(tool) then
+          table.insert(mason_install, tool)
+        end
+      end
+
+      -- Install whatever is not already on PATH. Run `:Mason` to inspect/manage.
+      require('mason-tool-installer').setup { ensure_installed = mason_install }
+
       require('mason-lspconfig').setup {
-        ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
-        automatic_enable = true, -- automatically run vim.lsp.enable() for all servers that are installed via Mason
+        ensure_installed = {}, -- installs are driven by mason-tool-installer above
+        automatic_enable = true, -- auto vim.lsp.enable() for Mason-installed servers
       }
 
-      -- Manually run vim.lsp.enable for all language servers that are *not* installed via Mason
-      if not vim.tbl_isempty(servers.others) then
-        vim.lsp.enable(vim.tbl_keys(servers.others))
+      -- mason-lspconfig only enables Mason-installed servers, so enable the
+      -- PATH-provided ones ourselves.
+      if #path_servers > 0 then
+        vim.lsp.enable(path_servers)
       end
     end,
   },
@@ -1003,34 +969,40 @@ require('lazy').setup({
     'navarasu/onedark.nvim',
     priority = 1000,
     config = function()
+      local current_style = 'dark'
+
       local function apply_theme(style)
+        current_style = style
         require('onedark').setup { style = style }
         require('onedark').load()
       end
 
-      local function get_system_theme()
-        local result = vim.fn.system('gsettings get org.gnome.desktop.interface color-scheme')
-        if vim.v.shell_error ~= 0 then
-          return 'dark'
-        end
-        return vim.trim(result):match('prefer%-dark') and 'dark' or 'light'
+      -- Query the GNOME color-scheme asynchronously so the gsettings shell call
+      -- never blocks UI startup. Repaints only if it differs from the current
+      -- style. Falls back to 'dark' on any error.
+      local function sync_from_system()
+        vim.system({ 'gsettings', 'get', 'org.gnome.desktop.interface', 'color-scheme' }, { text = true }, function(res)
+          local style = 'dark'
+          if res.code == 0 and not res.stdout:match 'prefer%-dark' then
+            style = 'light'
+          end
+          if style ~= current_style then
+            vim.schedule(function()
+              apply_theme(style)
+            end)
+          end
+        end)
       end
 
-      -- Initial setup
-      local current_style = get_system_theme()
-      apply_theme(current_style)
+      -- Paint immediately with a sane default, then reconcile with the system.
+      apply_theme 'dark'
+      sync_from_system()
 
-      -- Toggle mapping
       vim.keymap.set('n', '<leader>ts', function()
-        current_style = current_style == 'light' and 'dark' or 'light'
-        apply_theme(current_style)
+        apply_theme(current_style == 'light' and 'dark' or 'light')
       end, { desc = 'Toggle theme' })
 
-      -- Optional: Auto-refresh from system (run this command manually)
-      vim.keymap.set('n', '<leader>tr', function()
-        current_style = get_system_theme()
-        apply_theme(current_style)
-      end, { desc = 'Refresh theme from system' })
+      vim.keymap.set('n', '<leader>tr', sync_from_system, { desc = 'Refresh theme from system' })
     end,
   },
 
@@ -1080,38 +1052,46 @@ require('lazy').setup({
     end,
   },
   { -- Highlight, edit, and navigate code
+    -- Pinned to `master` on BOTH treesitter and textobjects. The `main`
+    -- rewrite requires Neovim 0.12+ (nightly); master is locked but supported
+    -- for Nvim 0.11. Pinning the textobjects dep too prevents it drifting to
+    -- its `main` default and mismatching treesitter. See `:help nvim-treesitter`.
     'nvim-treesitter/nvim-treesitter',
     branch = 'master',
-    dependencies = { 'nvim-treesitter/nvim-treesitter-textobjects' },
     lazy = false,
     build = ':TSUpdate',
-    main = 'nvim-treesitter.configs', -- Sets main module to use for opts
-    -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
+    main = 'nvim-treesitter.configs', -- module that consumes `opts`
+    dependencies = {
+      { 'nvim-treesitter/nvim-treesitter-textobjects', branch = 'master' },
+    },
     opts = {
       ensure_installed = {
         'bash',
         'c',
         'diff',
+        'dockerfile',
+        'hcl',
         'html',
+        'javascript',
+        'json',
         'lua',
         'luadoc',
         'markdown',
         'markdown_inline',
+        'nix',
+        'python',
         'query',
+        'rust',
+        'toml',
+        'tsx',
+        'typescript',
         'vim',
         'vimdoc',
-        'hcl',
+        'yaml',
       },
-      -- Autoinstall languages that are not installed
       auto_install = true,
-      highlight = {
-        enable = true,
-        -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
-        --  If you are experiencing weird indenting issues, add the language to
-        --  the list of additional_vim_regex_highlighting and disabled languages for indent.
-        additional_vim_regex_highlighting = { 'ruby' },
-      },
-      indent = { enable = true, disable = { 'ruby' } },
+      highlight = { enable = true },
+      indent = { enable = true },
       textobjects = {
         select = {
           enable = true,
@@ -1133,12 +1113,6 @@ require('lazy').setup({
         },
       },
     },
-    -- There are additional nvim-treesitter modules that you can use to interact
-    -- with nvim-treesitter. You should go explore a few and see what interests you:
-    --
-    --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
-    --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
-    --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
   },
   {
     'ravsii/tree-sitter-d2',
@@ -1203,14 +1177,7 @@ require('lazy').setup({
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
 
--- Toggle diagnostics
-function ToggleDiagnostics()
-  if vim.diagnostic.is_enabled() then
-    vim.diagnostic.enable(false)
-  else
-    vim.diagnostic.enable(true)
-  end
-end
-
--- Map a keybinding to this function (e.g., <leader>d)
-vim.keymap.set('n', '<leader>d', ToggleDiagnostics, { desc = 'Toggle Diagnostics' })
+-- Toggle diagnostics on/off
+vim.keymap.set('n', '<leader>d', function()
+  vim.diagnostic.enable(not vim.diagnostic.is_enabled())
+end, { desc = 'Toggle Diagnostics' })
