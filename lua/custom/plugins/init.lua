@@ -3,8 +3,4 @@
 --
 -- See the kickstart.nvim README for more information
 return {
-  {
-    'bezhermoso/tree-sitter-ghostty',
-    build = 'make nvim_install',
-  },
 }
