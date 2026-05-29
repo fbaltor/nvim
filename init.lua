@@ -1145,6 +1145,9 @@ require('lazy').setup({
 -- Sync nvim's colorscheme to Ghostty's active terminal theme (live, on switch).
 require('custom.ghostty-theme').setup()
 
+-- Visual <leader>y: yank selection + file/line context to the system clipboard.
+require('custom.yank-context').setup()
+
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
 
