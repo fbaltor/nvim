@@ -1099,15 +1099,13 @@ require('lazy').setup({
       -- focused; it only spares its own `vim.ui.select/input` floats, so a
       -- Telescope picker opened over it gets torn down (and drags the explorer
       -- with it) ~1s later. Fix: close mini.files FIRST (which stops that
-      -- timer), then open Telescope rooted at the entry under the cursor.
+      -- timer), then open Telescope at the project root (Neovim's cwd) — same
+      -- as the global `<leader>sf`, so the cursor position no longer matters
+      -- (and it can never dive into `.git`).
       local function mf_telescope(picker)
         return function()
-          local entry = minifiles.get_fs_entry()
-          local dir = entry
-            and (entry.fs_type == 'directory' and entry.path or vim.fn.fnamemodify(entry.path, ':h'))
-            or vim.fn.getcwd()
           minifiles.close()
-          require('telescope.builtin')[picker] { cwd = dir }
+          require('telescope.builtin')[picker]()
         end
       end
 
