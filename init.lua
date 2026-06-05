@@ -130,6 +130,77 @@ vim.o.smartcase = true
 -- Keep signcolumn on by default
 vim.o.signcolumn = 'yes'
 
+-- In markdown, render-markdown.nvim renders its heading/code marker in the sign
+-- column. With a native signcolumn the gutter packs signs by priority into the
+-- leftmost free cell, so the gitsigns change bar and the heading marker fight
+-- over (and jump between) cells. Instead, drive a custom two-slot statuscolumn
+-- for markdown only: slot 1 is reserved for gitsigns, slot 2 for the
+-- highest-priority non-git sign — render-markdown's heading marker (priority
+-- 4096) on heading lines, otherwise whatever else is there (e.g. LSP diagnostic
+-- signs), so diagnostics aren't lost in markdown buffers. (Signs live as
+-- extmarks across several namespaces, so we scan every matching one — gitsigns
+-- alone spreads across gitsigns_signs_, gitsigns_signs_staged, etc.)
+function _G.RenderMdStatuscolumn()
+  local buf = vim.api.nvim_get_current_buf()
+  local row = vim.v.lnum - 1
+  -- First sign found in any namespace whose name matches `pat`.
+  local function first_sign(pat)
+    for name, nsid in pairs(vim.api.nvim_get_namespaces()) do
+      if name:find(pat) then
+        local marks = vim.api.nvim_buf_get_extmarks(buf, nsid, { row, 0 }, { row, -1 }, { details = true, limit = 20 })
+        for _, m in ipairs(marks) do
+          local d = m[4]
+          if d and d.sign_text then
+            return d.sign_text, d.sign_hl_group
+          end
+        end
+      end
+    end
+  end
+  -- Highest-priority sign across all namespaces NOT matching `skip`.
+  local function top_sign(skip)
+    local text, hl, prio
+    for name, nsid in pairs(vim.api.nvim_get_namespaces()) do
+      if not name:find(skip) then
+        local marks = vim.api.nvim_buf_get_extmarks(buf, nsid, { row, 0 }, { row, -1 }, { details = true, limit = 20 })
+        for _, m in ipairs(marks) do
+          local d = m[4]
+          if d and d.sign_text and (not prio or (d.priority or 0) >= prio) then
+            text, hl, prio = d.sign_text, d.sign_hl_group, d.priority or 0
+          end
+        end
+      end
+    end
+    return text, hl
+  end
+  local function cell(text, hl)
+    if not text then
+      return '  ' -- empty slot, two cells wide like a sign
+    end
+    return hl and ('%#' .. hl .. '#' .. text .. '%*') or text
+  end
+  local git = cell(first_sign '^gitsigns_signs')
+  local mark = cell(top_sign '^gitsigns')
+  -- Reproduce the hybrid (absolute + relative) number column.
+  local num = ''
+  if vim.wo.number or vim.wo.relativenumber then
+    local rel, lnum = vim.v.relnum, vim.v.lnum
+    local n = (vim.wo.relativenumber and rel ~= 0) and rel or lnum
+    local w = math.max(vim.o.numberwidth - 1, #tostring(vim.api.nvim_buf_line_count(buf)))
+    local hl = (rel == 0) and 'CursorLineNr' or 'LineNr'
+    num = ('%%#%s#%' .. w .. 'd %%*'):format(hl, n)
+  end
+  return '%C' .. git .. mark .. num -- %C keeps the fold column if enabled
+end
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'markdown',
+  callback = function()
+    vim.opt_local.signcolumn = 'no' -- statuscolumn draws the signs itself
+    vim.opt_local.statuscolumn = '%!v:lua.RenderMdStatuscolumn()'
+  end,
+})
+
 -- Decrease update time
 vim.o.updatetime = 250
 
@@ -771,6 +842,17 @@ require('lazy').setup({
         },
         bashls = { bin = 'bash-language-server', config = {} },
         clangd = { bin = 'clangd', config = {} },
+        -- iwe: markdown PKM (~/memory-iwe). nvim-lspconfig ships NO `iwes`
+        -- config, so this needs a full spec (cmd/filetypes/root_markers), not
+        -- lspconfig defaults. root_markers '.iwe' scopes it to the library only.
+        iwes = {
+          bin = 'iwes',
+          config = {
+            cmd = { 'iwes' },
+            filetypes = { 'markdown' },
+            root_markers = { '.iwe' },
+          },
+        },
       }
 
       -- Standalone tools (formatters/linters used by conform). Not LSP servers,
