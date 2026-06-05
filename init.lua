@@ -1082,6 +1082,18 @@ require('lazy').setup({
       -- - sr)'  - [S]urround [R]eplace [)] [']
       require('mini.surround').setup()
 
+      -- File explorer (miller-columns). Trial alongside neo-tree (`\`):
+      -- `<leader>e` toggles it open at the current file / closes it.
+      local minifiles = require 'mini.files'
+      minifiles.setup()
+      vim.keymap.set('n', '<leader>e', function()
+        if not minifiles.close() then
+          local buf_name = vim.api.nvim_buf_get_name(0)
+          local path = vim.fn.filereadable(buf_name) == 1 and buf_name or vim.fn.getcwd()
+          minifiles.open(path)
+        end
+      end, { desc = 'Mini [E]xplorer (files)' })
+
       -- Simple and easy statusline.
       --  You could remove this setup call if you don't like it,
       --  and try some other statusline plugin
