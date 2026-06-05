@@ -1094,6 +1094,32 @@ require('lazy').setup({
         end
       end, { desc = 'Mini [E]xplorer (files)' })
 
+      -- Telescope from inside mini.files. The explorer runs a 1s "lost-focus"
+      -- watchdog timer that auto-closes itself when a non-minifiles window is
+      -- focused; it only spares its own `vim.ui.select/input` floats, so a
+      -- Telescope picker opened over it gets torn down (and drags the explorer
+      -- with it) ~1s later. Fix: close mini.files FIRST (which stops that
+      -- timer), then open Telescope rooted at the entry under the cursor.
+      local function mf_telescope(picker)
+        return function()
+          local entry = minifiles.get_fs_entry()
+          local dir = entry
+            and (entry.fs_type == 'directory' and entry.path or vim.fn.fnamemodify(entry.path, ':h'))
+            or vim.fn.getcwd()
+          minifiles.close()
+          require('telescope.builtin')[picker] { cwd = dir }
+        end
+      end
+
+      vim.api.nvim_create_autocmd('User', {
+        pattern = 'MiniFilesBufferCreate',
+        callback = function(args)
+          local b = args.data.buf_id
+          vim.keymap.set('n', '<leader>sf', mf_telescope 'find_files', { buffer = b, desc = '[S]earch [F]iles (here)' })
+          vim.keymap.set('n', '<leader>sg', mf_telescope 'live_grep', { buffer = b, desc = '[S]earch by [G]rep (here)' })
+        end,
+      })
+
       -- Simple and easy statusline.
       --  You could remove this setup call if you don't like it,
       --  and try some other statusline plugin
