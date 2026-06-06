@@ -842,12 +842,17 @@ require('lazy').setup({
         },
         bashls = { bin = 'bash-language-server', config = {} },
         clangd = { bin = 'clangd', config = {} },
-        -- iwe: markdown PKM (~/memory-iwe). nvim-lspconfig ships NO `iwes`
+        -- iwe: markdown PKM (~/memory). nvim-lspconfig ships NO `iwes`
         -- config, so this needs a full spec (cmd/filetypes/root_markers), not
-        -- lspconfig defaults. root_markers '.iwe' scopes it to the library only.
+        -- lspconfig defaults. `workspace_required` is load-bearing: with only
+        -- root_markers '.iwe', opening any markdown file *outside* the library
+        -- starts iwes in no-root mode rooted at $HOME, where it tries to index
+        -- the whole home tree and pins every core. Requiring a workspace makes
+        -- it attach only when a real '.iwe' root is found, i.e. inside the lib.
         iwes = {
           bin = 'iwes',
           config = {
+            workspace_required = true,
             cmd = { 'iwes' },
             filetypes = { 'markdown' },
             root_markers = { '.iwe' },
