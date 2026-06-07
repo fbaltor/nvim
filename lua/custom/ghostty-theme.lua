@@ -1,19 +1,16 @@
 -- Sync nvim's colorscheme to Ghostty's active terminal theme.
--- Resolves Ghostty's effective theme (override file, else the base light/dark
--- default), maps it to a matching nvim colorscheme, and live-reloads via a file
--- watch. Themes without a mapped colorscheme fall back to a palette-generated
--- look built straight from the Ghostty theme file's 16 ANSI colors.
+-- `ghostty-theme resolve` is the single source of truth: it prints the effective
+-- theme as "<name>\t<theme-file>" (the override if one is set, else the base
+-- config's light/dark default for the current GNOME mode). This module maps
+-- <name> to a matching nvim colorscheme, or — for an unmapped theme — builds a
+-- look straight from the theme file's 16 ANSI colors. Re-syncs live via a file
+-- watch on the override file.
 local uv = vim.uv or vim.loop
 
 local M = {}
 
 local CONFIG_DIR = vim.fn.expand '~/.config/ghostty'
 local OVERRIDE_FILE = CONFIG_DIR .. '/current-theme.conf'
-local BASE_CONFIG = CONFIG_DIR .. '/config'
-local THEME_DIRS = {
-  CONFIG_DIR .. '/themes',
-  '/run/current-system/sw/share/ghostty/themes',
-}
 
 -- Ghostty theme name -> matching nvim colorscheme. `bg` sets vim.o.background;
 -- `pre` runs before :colorscheme (for schemes configured via globals).
@@ -38,70 +35,15 @@ local MAP = {
   ['Nord'] = { scheme = 'nord', bg = 'dark' },
 }
 
-local function read_lines(path)
-  if vim.fn.filereadable(path) == 0 then
-    return nil
-  end
-  return vim.fn.readfile(path)
-end
-
 local function trim(s)
   return (s:gsub('^%s*(.-)%s*$', '%1'))
 end
 
--- Single theme name from the override file, or nil when cleared/absent or when
--- it holds a light:/dark: pair (resolved from the base config instead).
-local function read_override()
-  local lines = read_lines(OVERRIDE_FILE)
-  if not lines then
-    return nil
-  end
-  for _, line in ipairs(lines) do
-    local val = line:match '^%s*theme%s*=%s*(.+)$'
-    if val then
-      val = trim(val)
-      if val ~= '' and not val:find ':' then
-        return val
-      end
-    end
-  end
-  return nil
-end
-
--- Parses the base config's `theme = light:A, dark:B` line; falls back to the
--- known Solarized defaults if absent.
-local function read_base_defaults()
-  local light, dark = 'iTerm2 Solarized Light', 'iTerm2 Solarized Dark'
-  local lines = read_lines(BASE_CONFIG)
-  if lines then
-    for _, line in ipairs(lines) do
-      local val = line:match '^%s*theme%s*=%s*(.+)$'
-      if val and val:find ':' then
-        local l = val:match 'light:%s*([^,]+)'
-        local d = val:match 'dark:%s*([^,]+)'
-        if l then light = trim(l) end
-        if d then dark = trim(d) end
-      end
-    end
-  end
-  return light, dark
-end
-
-local function resolve_theme_file(name)
-  for _, dir in ipairs(THEME_DIRS) do
-    local p = dir .. '/' .. name
-    if vim.fn.filereadable(p) == 1 then
-      return p
-    end
-  end
-  return nil
-end
-
 -- Crude themed look built from a Ghostty theme file's 16 ANSI colors + bg/fg.
--- Used for any Ghostty theme without a mapped nvim colorscheme.
-local function palette_fallback(name)
-  local path = resolve_theme_file(name)
-  if not path then
+-- Used for any Ghostty theme without a mapped nvim colorscheme. `path` is the
+-- theme file resolved by `ghostty-theme resolve`.
+local function palette_fallback(path)
+  if not (path and path ~= '' and vim.fn.filereadable(path) == 1) then
     return
   end
   local pal, bg, fg = {}, nil, nil
@@ -166,7 +108,7 @@ local function palette_fallback(name)
   end
 end
 
-local function apply(name)
+local function apply(name, path)
   local entry = MAP[name]
   if entry then
     vim.o.background = entry.bg or 'dark'
@@ -177,23 +119,34 @@ local function apply(name)
       return
     end
   end
-  palette_fallback(name)
+  palette_fallback(path)
 end
 
-function M.sync()
-  local name = read_override()
-  if name then
-    vim.schedule(function()
-      apply(name)
-    end)
-    return
+-- Parse one "<name>\t<theme-file>" line from `ghostty-theme resolve`. Returns
+-- the theme name (nil on failure/empty) and the theme-file path (nil when none).
+local function parse_resolve(res)
+  if not res or res.code ~= 0 then
+    return nil, nil
   end
-  -- Override cleared: follow the base config's light/dark default per GNOME.
-  local light, dark = read_base_defaults()
-  vim.system({ 'gsettings', 'get', 'org.gnome.desktop.interface', 'color-scheme' }, { text = true }, function(res)
-    local pick = (res.code == 0 and res.stdout:match 'prefer%-dark') and dark or light
+  local out = vim.split(res.stdout or '', '\n', { plain = true })[1] or ''
+  local name, path = out:match '^([^\t]*)\t?(.*)$'
+  name = trim(name or '')
+  if name == '' then
+    return nil, nil
+  end
+  path = (path and path ~= '') and trim(path) or nil
+  return name, path
+end
+
+-- Async re-sync: ask the script for the effective theme, apply on the main loop.
+function M.sync()
+  vim.system({ 'ghostty-theme', 'resolve' }, { text = true }, function(res)
+    local name, path = parse_resolve(res)
+    if not name then
+      return
+    end
     vim.schedule(function()
-      apply(pick)
+      apply(name, path)
     end)
   end)
 end
@@ -221,7 +174,16 @@ local function start_watch()
 end
 
 function M.setup()
-  M.sync()
+  -- First sync runs synchronously so nvim launches already-themed — avoids a
+  -- flash of the default colorscheme while the async resolve round-trips.
+  local ok, res = pcall(function()
+    return vim.system({ 'ghostty-theme', 'resolve' }, { text = true }):wait(200)
+  end)
+  local name, path = parse_resolve(ok and res or nil)
+  if name then
+    apply(name, path)
+  end
+
   start_watch()
   -- Re-sync once plugins are installed/ready (handles cold first launch).
   vim.api.nvim_create_autocmd('User', { pattern = 'VeryLazy', once = true, callback = M.sync })
