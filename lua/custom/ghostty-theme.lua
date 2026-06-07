@@ -161,13 +161,15 @@ local function start_watch()
   if not (watcher and timer) then
     return
   end
-  -- Debounce: Ghostty's truncate+write can fire two events per switch.
+  -- Debounce: Ghostty's truncate+write can fire two events per switch. 15ms
+  -- still coalesces those (they land sub-millisecond apart) while keeping nvim
+  -- close behind the terminal's instant OSC repaint, minimizing the switch flash.
   watcher:start(OVERRIDE_FILE, {}, function(err)
     if err then
       return
     end
     timer:stop()
-    timer:start(50, 0, function()
+    timer:start(15, 0, function()
       vim.schedule(M.sync)
     end)
   end)
