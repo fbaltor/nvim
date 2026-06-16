@@ -1143,20 +1143,26 @@ require('lazy').setup({
     end,
   },
   { -- Highlight, edit, and navigate code
-    -- Pinned to `master` on BOTH treesitter and textobjects. The `main`
-    -- rewrite requires Neovim 0.12+ (nightly); master is locked but supported
-    -- for Nvim 0.11. Pinning the textobjects dep too prevents it drifting to
-    -- its `main` default and mismatching treesitter. See `:help nvim-treesitter`.
+    -- On the `main` branch (the rewrite) — REQUIRED for Neovim 0.12+. The old
+    -- `master` branch crashes on 0.12 (`treesitter.lua: attempt to call method
+    -- 'range' (a nil value)` during injection). `main` drops the module system:
+    -- no `opts`/`highlight`/`indent`/`textobjects` tables. Instead we install
+    -- parsers explicitly, start highlighting per-filetype via
+    -- `vim.treesitter.start()`, and set textobjects keymaps by hand.
+    -- Does NOT support lazy-loading, so `lazy = false`. See `:help nvim-treesitter`.
     'nvim-treesitter/nvim-treesitter',
-    branch = 'master',
+    branch = 'main',
     lazy = false,
     build = ':TSUpdate',
-    main = 'nvim-treesitter.configs', -- module that consumes `opts`
     dependencies = {
-      { 'nvim-treesitter/nvim-treesitter-textobjects', branch = 'master' },
+      { 'nvim-treesitter/nvim-treesitter-textobjects', branch = 'main' },
     },
-    opts = {
-      ensure_installed = {
+    config = function()
+      local ts = require 'nvim-treesitter'
+      ts.setup { install_dir = vim.fn.stdpath 'data' .. '/site' }
+
+      -- Parsers to keep installed (was `ensure_installed`).
+      ts.install {
         'bash',
         'c',
         'diff',
@@ -1179,31 +1185,62 @@ require('lazy').setup({
         'vim',
         'vimdoc',
         'yaml',
-      },
-      auto_install = true,
-      highlight = { enable = true },
-      indent = { enable = true },
-      textobjects = {
-        select = {
-          enable = true,
-          lookahead = true,
-          keymaps = {
-            ['af'] = '@function.outer',
-            ['if'] = '@function.inner',
-            ['ac'] = '@class.outer',
-            ['ic'] = '@class.inner',
-            ['aa'] = '@parameter.outer',
-            ['ia'] = '@parameter.inner',
-            ['ab'] = '@block.outer',
-            ['ib'] = '@block.inner',
-            ['al'] = '@loop.outer',
-            ['il'] = '@loop.inner',
-            ['ai'] = '@conditional.outer',
-            ['ii'] = '@conditional.inner',
-          },
-        },
-      },
-    },
+      }
+
+      -- Start highlighting + (experimental) indentation per buffer, and
+      -- auto-install a missing parser on first open of its filetype (restores the
+      -- old `auto_install = true`). Replaces `highlight.enable`/`indent.enable`.
+      local function ts_enable(buf, lang)
+        if pcall(vim.treesitter.start, buf, lang) then
+          vim.bo[buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+        end
+      end
+      vim.api.nvim_create_autocmd('FileType', {
+        callback = function(ev)
+          local ft = vim.bo[ev.buf].filetype
+          if ft == '' then
+            return
+          end
+          local lang = vim.treesitter.language.get_lang(ft) or ft
+          if vim.tbl_contains(ts.get_installed(), lang) then
+            ts_enable(ev.buf, lang)
+          elseif vim.tbl_contains(ts.get_available(), lang) then
+            -- parser not built yet: install it, then start when ready (async).
+            ts.install(lang):await(vim.schedule_wrap(function()
+              if vim.api.nvim_buf_is_valid(ev.buf) then
+                ts_enable(ev.buf, lang)
+              end
+            end))
+          end
+        end,
+      })
+
+      -- Textobjects (main branch): setup + manual `select` keymaps reproducing
+      -- the previous `keymaps` table exactly (same lhs -> same @capture).
+      require('nvim-treesitter-textobjects').setup {
+        select = { lookahead = true },
+      }
+      local select = require 'nvim-treesitter-textobjects.select'
+      local textobjects = {
+        ['af'] = '@function.outer',
+        ['if'] = '@function.inner',
+        ['ac'] = '@class.outer',
+        ['ic'] = '@class.inner',
+        ['aa'] = '@parameter.outer',
+        ['ia'] = '@parameter.inner',
+        ['ab'] = '@block.outer',
+        ['ib'] = '@block.inner',
+        ['al'] = '@loop.outer',
+        ['il'] = '@loop.inner',
+        ['ai'] = '@conditional.outer',
+        ['ii'] = '@conditional.inner',
+      }
+      for lhs, obj in pairs(textobjects) do
+        vim.keymap.set({ 'x', 'o' }, lhs, function()
+          select.select_textobject(obj, 'textobjects')
+        end, { desc = 'TS select ' .. obj })
+      end
+    end,
   },
   {
     'ravsii/tree-sitter-d2',
