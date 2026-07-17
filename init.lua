@@ -1251,13 +1251,11 @@ require('lazy').setup({
     'MeanderingProgrammer/render-markdown.nvim',
     dependencies = { 'nvim-treesitter/nvim-treesitter' },
     ft = { 'markdown' },
-    opts = {
-      -- Table borders are virtual text drawn per buffer line; wrapped rows
-      -- shatter them. Disable wrap only while the rendered view is active.
-      win_options = {
-        wrap = { default = true, rendered = false },
-      },
-    },
+    -- No win_options.wrap override: the plugin skips rendering whenever the
+    -- window is horizontally scrolled (leftcol > 0), so a nowrap rendered view
+    -- flickers rendered<->raw at the end of any long line. Keeping wrap on in
+    -- both states pins leftcol at 0; only tables wider than the window suffer.
+    opts = {},
   },
 
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
